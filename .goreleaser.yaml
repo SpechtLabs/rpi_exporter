@@ -1,0 +1,18 @@
+builds:
+  - id: "rpi_exporter"
+
+    env:
+      - CGO_ENABLED=0
+
+    goos:
+      - linux
+
+    goarch:
+      - arm
+      - arm64
+
+    goarm:
+      - "6"
+      - "7"
+
+    mod_timestamp: "{{ .CommitTimestamp }}"
