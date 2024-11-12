@@ -1,18 +1,25 @@
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+gomod:
+  proxy: true
+
 builds:
-  - id: "rpi_exporter"
-
-    env:
+  - env:
       - CGO_ENABLED=0
-
     goos:
       - linux
-
     goarch:
       - arm
       - arm64
-
     goarm:
       - "6"
       - "7"
-
     mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+checksum:
+  name_template: "checksums.txt"
