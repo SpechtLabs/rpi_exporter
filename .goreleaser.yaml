@@ -1,8 +1,5 @@
 version: 2
 
-snapshot:
-  version_template: "{{.ShortCommit}}"
-
 before:
   hooks:
     - go mod tidy
