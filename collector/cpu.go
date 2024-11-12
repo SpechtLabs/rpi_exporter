@@ -15,7 +15,7 @@ package collector
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -54,7 +54,7 @@ func NewCPUCollector() (Collector, error) {
 func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
 	// Get temperature string from /sys/class/thermal/thermal_zone0/temp and
 	// convert it to float64 value.
-	b, err := ioutil.ReadFile("/sys/class/thermal/thermal_zone0/temp")
+	b, err := os.ReadFile("/sys/class/thermal/thermal_zone0/temp")
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
 		// and convert it to a float64 value.
 		// Use scaling_cur_freq rather than cpuinfo_cur_freq because that seems to be
 		// more accurate, according to the internet.
-		b, err = ioutil.ReadFile(cpu + "/cpufreq/scaling_cur_freq")
+		b, err = os.ReadFile(cpu + "/cpufreq/scaling_cur_freq")
 		if err != nil {
 			return err
 		}
