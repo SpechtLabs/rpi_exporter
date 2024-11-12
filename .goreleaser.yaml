@@ -4,9 +4,6 @@ before:
   hooks:
     - go mod tidy
 
-gomod:
-  proxy: true
-
 builds:
   - env:
       - CGO_ENABLED=0
@@ -20,7 +17,15 @@ builds:
       - "7"
     mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
+      - -s
+      - -w
+      - -extldflags "-fno-PIC -static"
       - -trimpath
+      - -X=github.com/prometheus/common/version.Version={{.Version}}
+      - -X=github.com/prometheus/common/version.Revision={{.Revision}}
+      - -X=github.com/prometheus/common/version.Branch={{.Branch}}
+      - -X=github.com/prometheus/common/version.BuildUser={{user}}@{{host}}
+      - -X=github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
 
 checksum:
   name_template: "checksums.txt"
