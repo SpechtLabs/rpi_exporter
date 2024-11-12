@@ -16,7 +16,7 @@ builds:
       - "6"
       - "7"
     mod_timestamp: "{{ .CommitTimestamp }}"
-    flags:
+    ldflags:
       - -X=github.com/prometheus/common/version.Version={{.Version}}
       - -X=github.com/prometheus/common/version.Branch={{.Branch}}
 
