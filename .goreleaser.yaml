@@ -23,7 +23,6 @@ builds:
       - -trimpath
       - -X=github.com/prometheus/common/version.Version={{.Version}}
       - -X=github.com/prometheus/common/version.Branch={{.Branch}}
-      - -X=github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
 
 checksum:
   name_template: "checksums.txt"
