@@ -17,8 +17,6 @@ builds:
       - "7"
     mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
-      - -extldflags "-fno-PIC -static"
-      - -trimpath
       - -X=github.com/prometheus/common/version.Version={{.Version}}
       - -X=github.com/prometheus/common/version.Branch={{.Branch}}
 
