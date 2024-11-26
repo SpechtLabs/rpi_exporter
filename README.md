@@ -7,8 +7,8 @@
 [![license_badge]][license]
 
 ![go_releaser_build_badge]
-![docker_build_badge]
 ![go_releaser_ci_build_badge]
+![docker_build_badge]
 
 ---
 
@@ -21,17 +21,17 @@
 
 ### Introduction
 
-The *rpi_exporter* is a simple server that scrapes the Raspberry Pi's CPU
+The _rpi_exporter_ is a simple server that scrapes the Raspberry Pi's CPU
 temperature and exports it via HTTP for Prometheus consumption.
 
 ### Usage
 
 #### Installation
 
-The easiest way to run the *rpi_exporter* is by grabbing the latest binary from
+The easiest way to run the _rpi_exporter_ is by grabbing the latest binary from
 the [release page].
 
-Do not forget to run *rpi_exporter* using user in `video` group to get GPU
+Do not forget to run _rpi_exporter_ using user in `video` group to get GPU
 details from RPi.
 
 ##### Building from source
@@ -80,6 +80,6 @@ See [LICENSE](LICENSE) for more information.
 [release_badge]: https://img.shields.io/github/release/cedi/rpi_exporter.svg
 [license]: https://opensource.org/licenses/Apache-2.0
 [license_badge]: https://img.shields.io/badge/license-Apache-blue.svg
-[go_releaser_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/go_releaser.yaml/badge.svg
-[go_releaser_ci_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/go_releaser_ci.yaml/badge.svg
-[docker_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/docker_build.yaml/badge.svg
+[go_releaser_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/go_releaser.yaml/badge.svg?branch=main
+[go_releaser_ci_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/go_releaser_ci.yaml/badge.svg?branch=main
+[docker_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/docker_build.yaml/badge.svg?branch=main
