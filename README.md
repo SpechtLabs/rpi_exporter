@@ -1,12 +1,13 @@
 # lukasmalkmus/rpi_exporter
 
-> A Raspberry Pi CPU temperature exporter. - by **[Lukas Malkmus]**
+> A Raspberry Pi CPU temperature exporter. - by **[Lukas Malkmus]** (fork by [cedi])
 
-[![Travis Status][travis_badge]][travis]
-[![Go Report][report_badge]][report]
-[![Latest Release][release_badge]][release]
-[![License][license_badge]][license]
-[![Docker][docker_badge]][docker]
+[![go report_badge]][report]
+[![release_badge]][release page]
+[![license_badge]][license]
+
+![go_releaser_build_badge]
+![docker_build_badge]
 
 ---
 
@@ -27,7 +28,7 @@ temperature and exports it via HTTP for Prometheus consumption.
 #### Installation
 
 The easiest way to run the *rpi_exporter* is by grabbing the latest binary from
-the [release page][release].
+the [release page].
 
 Do not forget to run *rpi_exporter* using user in `video` group to get GPU
 details from RPi.
@@ -54,11 +55,6 @@ Help on flags:
 ./rpi_exporter --help
 ```
 
-#### Docker images
-
-Thanks to [Carlos Eduardo] docker images are now available for this exporter!
-Checkout [DockerHub]!
-
 ### Contributing
 
 Feel free to submit PRs or to fill Issues. Every kind of help is appreciated.
@@ -74,17 +70,13 @@ See [LICENSE](LICENSE) for more information.
 <!-- Links -->
 [go mod]: https://golang.org/cmd/go/#hdr-Module_maintenance
 [Lukas Malkmus]: https://github.com/lukasmalkmus
-[Carlos Eduardo]: https://github.com/carlosedp
-[DockerHub]: https://hub.docker.com/r/carlosedp/arm_exporter
+[cedi]: https://github.com/cedi
 
 <!-- Badges -->
-[travis]: https://travis-ci.com/lukasmalkmus/rpi_exporter
-[travis_badge]: https://travis-ci.com/lukasmalkmus/rpi_exporter.svg
-[report]: https://goreportcard.com/report/github.com/lukasmalkmus/rpi_exporter
-[report_badge]: https://goreportcard.com/badge/github.com/lukasmalkmus/rpi_exporter
-[release]: https://github.com/lukasmalkmus/rpi_exporter/releases
-[release_badge]: https://img.shields.io/github/release/lukasmalkmus/rpi_exporter.svg
+[report]: https://goreportcard.com/report/github.com/cedi/rpi_exporter
+[release page]: https://github.com/cedi/rpi_exporter/releases
+[release_badge]: https://img.shields.io/github/release/cedi/rpi_exporter.svg
 [license]: https://opensource.org/licenses/Apache-2.0
 [license_badge]: https://img.shields.io/badge/license-Apache-blue.svg
-[docker]: https://hub.docker.com/r/carlosedp/arm_exporter
-[docker_badge]: https://img.shields.io/docker/pulls/carlosedp/arm_exporter.svg
+[go_releaser_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/ro_releaser/badge.svg
+[docker_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/docker_build/badge.svg

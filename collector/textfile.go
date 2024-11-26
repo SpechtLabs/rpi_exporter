@@ -15,7 +15,6 @@ package collector
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,7 +24,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
-	"github.com/prometheus/common/log"
+	log "github.com/sirupsen/logrus"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -89,7 +88,7 @@ func convertMetricFamily(metricFamily *dto.MetricFamily, ch chan<- prometheus.Me
 					break
 				}
 			}
-			if present == false {
+			if !present {
 				names = append(names, k)
 				values = append(values, "")
 			}
@@ -178,7 +177,7 @@ func (c *textFileCollector) Update(ch chan<- prometheus.Metric) error {
 	mtimes := map[string]time.Time{}
 
 	// Iterate over files and accumulate their metrics.
-	files, err := ioutil.ReadDir(c.path)
+	files, err := os.ReadDir(c.path)
 	if err != nil && c.path != "" {
 		log.Errorf("Error reading textfile collector directory %q: %s", c.path, err)
 		error = 1.0
@@ -220,7 +219,10 @@ fileLoop:
 
 		// Only set this once it has been parsed and validated, so that a
 		// failure does not appear fresh.
-		mtimes[f.Name()] = f.ModTime()
+		fsInfo, err := f.Info()
+		if err == nil {
+			mtimes[f.Name()] = fsInfo.ModTime()
+		}
 
 		for _, mf := range parsedFamilies {
 			convertMetricFamily(mf, ch)

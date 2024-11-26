@@ -1,9 +1,9 @@
 go:
-    version: 1.21
+    version: 1.22
 repository:
-    path: github.com/lukasmalkmus/rpi_exporter
+    path: github.com/cedi/rpi_exporter
 build:
-    flags: -mod=vendor -buildmode=exe -tags=netgo -installsuffix=cgo -trimpath
+    flags: -buildmode=exe -tags=netgo -installsuffix=cgo -trimpath
     ldflags: |
         -s
         -w

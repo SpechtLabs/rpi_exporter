@@ -28,11 +28,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
+	log "github.com/sirupsen/logrus"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 
-	"github.com/lukasmalkmus/rpi_exporter/collector"
+	"github.com/cedi/rpi_exporter/collector"
 )
 
 // A wrapper around http.Handler to handle filtering.
@@ -112,16 +112,17 @@ func (h *handler) filteredHandler(filters ...string) (http.Handler, error) {
 	// Create a new Raspberry Pi collector.
 	rpiColl, err := collector.New(filters...)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't create %s", err)
+		return nil, fmt.Errorf("couldn't create %s", err)
 	}
 
 	// Create a new prometheus registry and register the Raspberry Pi collector
 	// on it.
 	reg := prometheus.NewRegistry()
 	if err := reg.Register(rpiColl); err != nil {
-		return nil, fmt.Errorf("Couldn't register collector: %s", err)
+		return nil, fmt.Errorf("couldn't register collector: %s", err)
 	}
-	reg.MustRegister(version.NewCollector("rpi_exporter"))
+
+	reg.MustRegister(rpiColl)
 
 	// Delegate http serving to Prometheus client library, which will call
 	// collector.Collect.
@@ -129,7 +130,7 @@ func (h *handler) filteredHandler(filters ...string) (http.Handler, error) {
 		handler = promhttp.HandlerFor(
 			prometheus.Gatherers{h.exporterMetricsRegistry, reg},
 			promhttp.HandlerOpts{
-				ErrorLog:      log.NewErrorLogger(),
+				ErrorLog:      log.StandardLogger(),
 				ErrorHandling: promhttp.HTTPErrorOnError,
 				Registry:      h.exporterMetricsRegistry,
 			})
@@ -139,7 +140,7 @@ func (h *handler) filteredHandler(filters ...string) (http.Handler, error) {
 	} else {
 		handler = promhttp.HandlerFor(reg,
 			promhttp.HandlerOpts{
-				ErrorLog:      log.NewErrorLogger(),
+				ErrorLog:      log.StandardLogger(),
 				ErrorHandling: promhttp.HTTPErrorOnError,
 			})
 	}
@@ -168,7 +169,6 @@ func main() {
 	)
 
 	// Setup the command line flags and commands.
-	log.AddFlags(kingpin.CommandLine)
 	kingpin.Version(version.Print("rpi_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
@@ -199,7 +199,6 @@ func main() {
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
-		ErrorLog:     log.NewErrorLogger(),
 	}
 
 	// Listen for termination signals.
