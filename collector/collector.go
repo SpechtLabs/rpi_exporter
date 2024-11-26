@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
+	kingpin "github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 // Namespace defines the common namespace to be used by all metrics.
