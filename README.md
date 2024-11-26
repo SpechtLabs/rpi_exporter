@@ -1,6 +1,6 @@
-# lukasmalkmus/rpi_exporter
+# rpi_exporter
 
-> A Raspberry Pi CPU temperature exporter. - by **[Lukas Malkmus]** (fork by [cedi])
+> A Raspberry Pi CPU temperature exporter. - by **[Lukas Malkmus]** (_fork by [cedi]_)
 
 [![go report_badge]][report]
 [![release_badge]][release page]
@@ -8,6 +8,7 @@
 
 ![go_releaser_build_badge]
 ![docker_build_badge]
+![go_releaser_ci_build_badge]
 
 ---
 
@@ -79,5 +80,6 @@ See [LICENSE](LICENSE) for more information.
 [release_badge]: https://img.shields.io/github/release/cedi/rpi_exporter.svg
 [license]: https://opensource.org/licenses/Apache-2.0
 [license_badge]: https://img.shields.io/badge/license-Apache-blue.svg
-[go_releaser_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/ro_releaser/badge.svg
-[docker_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/docker_build/badge.svg
+[go_releaser_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/go_releaser.yaml/badge.svg
+[go_releaser_ci_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/go_releaser_ci.yaml/badge.svg
+[docker_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/docker_build.yaml/badge.svg
