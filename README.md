@@ -73,6 +73,7 @@ See [LICENSE](LICENSE) for more information.
 [cedi]: https://github.com/cedi
 
 <!-- Badges -->
+[go report_badge]: https://goreportcard.com/badge/github.com/cedi/rpi_exporter
 [report]: https://goreportcard.com/report/github.com/cedi/rpi_exporter
 [release page]: https://github.com/cedi/rpi_exporter/releases
 [release_badge]: https://img.shields.io/github/release/cedi/rpi_exporter.svg
