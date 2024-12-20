@@ -122,8 +122,6 @@ func (h *handler) filteredHandler(filters ...string) (http.Handler, error) {
 		return nil, fmt.Errorf("couldn't register collector: %s", err)
 	}
 
-	reg.MustRegister(rpiColl)
-
 	// Delegate http serving to Prometheus client library, which will call
 	// collector.Collect.
 	if h.includeExporterMetrics {
