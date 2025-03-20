@@ -6,7 +6,6 @@
 [![release_badge]][release page]
 [![license_badge]][license]
 
-![go_releaser_build_badge]
 ![go_releaser_ci_build_badge]
 ![docker_build_badge]
 
@@ -80,6 +79,5 @@ See [LICENSE](LICENSE) for more information.
 [release_badge]: https://img.shields.io/github/release/cedi/rpi_exporter.svg
 [license]: https://opensource.org/licenses/Apache-2.0
 [license_badge]: https://img.shields.io/badge/license-Apache-blue.svg
-[go_releaser_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/go_releaser.yaml/badge.svg?branch=main
 [go_releaser_ci_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/go_releaser_ci.yaml/badge.svg?branch=main
 [docker_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/docker_build.yaml/badge.svg?branch=main
