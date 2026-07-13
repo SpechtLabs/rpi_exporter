@@ -1,6 +1,6 @@
 module github.com/cedi/rpi_exporter
 
-go 1.25.0
+go 1.26.5
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
