@@ -29,10 +29,6 @@ type cpuCollector struct {
 	cpuFreqHertz   *prometheus.Desc
 }
 
-func init() {
-	registerCollector("cpu", defaultEnabled, NewCPUCollector)
-}
-
 // NewCPUCollector returns a new Collector exposing CPU temperature metrics.
 func NewCPUCollector() (Collector, error) {
 	cc := &cpuCollector{
@@ -62,7 +58,7 @@ func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
 	if err != nil {
 		return err
 	}
-	temp = temp / 1000
+	temp /= 1000
 
 	// Export the metric.
 	ch <- prometheus.MustNewConstMetric(

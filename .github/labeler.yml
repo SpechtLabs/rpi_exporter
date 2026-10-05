@@ -1,0 +1,66 @@
+# Labels a pull request by the files it changes and its branch name. The
+# labeler job in pr-hygiene.yaml applies them, and drops one whose files the
+# pull request no longer touches.
+
+# The collectors
+collector:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "collector/**"
+
+# The HTTP server and command line
+exporter:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "rpi_exporter.go"
+
+# Tests
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*_test.go"
+          - "**/testdata/**"
+
+# Documentation
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+
+# Packaging: the container image and the systemd unit
+packaging:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "Dockerfile"
+          - "systemd/**"
+
+# Build, release, and CI plumbing
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+          - ".goreleaser.yaml"
+          - ".release-please-config.json"
+          - ".release-please-manifest.json"
+          - ".mise.toml"
+          - ".golangci.yaml"
+          - ".custom-gcl.yml"
+          - ".pre-commit-config.yaml"
+          - ".yamllint.yaml"
+          - ".editorconfig"
+          - "codecov.yml"
+          - "renovate.json"
+          - "go.mod"
+          - "go.sum"
+
+# Add 'enhancement' to any PR whose head branch starts with `feat` or `feature`
+enhancement:
+  - head-branch:
+      - "^feat"
+      - "^feature"
+
+# Add 'bug' to any PR whose head branch starts with `fix` or `bug`
+bug:
+  - head-branch:
+      - "^fix"
+      - "^bug"

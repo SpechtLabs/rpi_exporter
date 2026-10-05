@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"strings"
 
-	kingpin "github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -30,20 +29,14 @@ func getGpuComponents() []string {
 	return []string{"core", "h264", "v3d"}
 }
 
-var (
-	// /opt/vc/bin/vcgencmd for RaspiOS 32bit
-	// /usr/bin/vcgencmd for RaspiOS 64bit
-	vcgencmd = kingpin.Flag("vcgencmd", "vcgencmd including path.").Default("/opt/vc/bin/vcgencmd").String()
-)
+// vcgencmd is the --vcgencmd flag RegisterFlags defines: /opt/vc/bin/vcgencmd
+// on RaspiOS 32bit, /usr/bin/vcgencmd on RaspiOS 64bit.
+var vcgencmd *string
 
 type gpuCollector struct {
-	vcgencmd       string
 	gpuTempCelsius *prometheus.Desc
 	gpuFreqHertz   *prometheus.Desc
-}
-
-func init() {
-	registerCollector("gpu", defaultEnabled, NewGPUCollector)
+	vcgencmd       string
 }
 
 // NewGPUCollector returns a new Collector exposing GPU temperature metrics.

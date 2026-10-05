@@ -15,11 +15,15 @@ package collector
 
 import (
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
 	kingpin "github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sierrasoftworks/humane-errors-go"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -48,8 +52,23 @@ var (
 	collectorState = make(map[string]*bool)
 )
 
-// registerCollector registers a givec RPiCollector on the
-func registerCollector(collector string, isDefaultEnabled bool, factory func() (Collector, error)) {
+// RegisterFlags defines the collectors' command line flags on app: one
+// --collector.<name> flag per collector, and the flags the collectors read
+// their settings from. Call it once, before app.Parse; New builds only the
+// collectors whose flags are set.
+func RegisterFlags(app *kingpin.Application) {
+	vcgencmd = app.Flag("vcgencmd", "vcgencmd including path.").Default("/opt/vc/bin/vcgencmd").String()
+	textFileDirectory = app.Flag("collector.textfile.directory", "Directory to read text files with metrics from.").Default("").String()
+
+	registerCollector(app, "cpu", defaultEnabled, NewCPUCollector)
+	registerCollector(app, "fan", defaultEnabled, NewFanCollector)
+	registerCollector(app, "gpu", defaultEnabled, NewGPUCollector)
+	registerCollector(app, "textfile", defaultEnabled, NewTextFileCollector)
+}
+
+// registerCollector adds the --collector.<name> flag that enables a collector,
+// and the factory New builds it with.
+func registerCollector(app *kingpin.Application, collector string, isDefaultEnabled bool, factory func() (Collector, error)) {
 	// Get the default state as a string for the help flag.
 	var helpDefaultState string
 	if isDefaultEnabled {
@@ -63,7 +82,7 @@ func registerCollector(collector string, isDefaultEnabled bool, factory func() (
 	flagHelp := fmt.Sprintf("Enable the %s collector (default: %s).", collector, helpDefaultState)
 	defaultValue := fmt.Sprintf("%v", isDefaultEnabled)
 
-	flag := kingpin.Flag(flagName, flagHelp).Default(defaultValue).Bool()
+	flag := app.Flag(flagName, flagHelp).Default(defaultValue).Bool()
 	collectorState[collector] = flag
 
 	factories[collector] = factory
@@ -80,17 +99,18 @@ type RPiCollector struct {
 	collectors map[string]Collector
 }
 
-// New creates a new Raspberry Pi collector.
-func New(filters ...string) (*RPiCollector, error) {
+// New creates a new Raspberry Pi collector with the enabled collectors, or
+// only those of them that filters names.
+func New(filters ...string) (*RPiCollector, humane.Error) {
 	// Build the map of requested/filtered collectors.
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
 		if !exist {
-			return nil, fmt.Errorf("missing collector: %s", filter)
+			return nil, humane.New(fmt.Sprintf("unknown collector %q", filter), "collect[] takes one of: "+strings.Join(slices.Sorted(maps.Keys(collectorState)), ", "))
 		}
 		if !*enabled {
-			return nil, fmt.Errorf("disabled collector: %s", filter)
+			return nil, humane.New(fmt.Sprintf("collector %q is disabled", filter), fmt.Sprintf("start rpi_exporter with --collector.%s to enable it", filter))
 		}
 		f[filter] = true
 	}
@@ -101,7 +121,7 @@ func New(filters ...string) (*RPiCollector, error) {
 		if *enabled {
 			collector, err := factories[key]()
 			if err != nil {
-				return nil, err
+				return nil, humane.Wrap(err, fmt.Sprintf("cannot create the %s collector", key), fmt.Sprintf("start rpi_exporter with --no-collector.%s to run without it", key))
 			}
 			if len(f) == 0 || f[key] {
 				collectors[key] = collector

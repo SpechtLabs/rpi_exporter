@@ -1,11 +1,13 @@
 version: 2
 
-before:
-  hooks:
-    - go mod tidy
+project_name: rpi_exporter
 
+# Raspberry Pi only: armv6 (Pi Zero and 1), armv7 (Pi 2 and 3 on a 32-bit OS)
+# and arm64. The collectors read the Pi's sysfs and run vcgencmd, so there is
+# nothing to build for other platforms.
 builds:
-  - env:
+  - id: rpi_exporter
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -15,10 +17,54 @@ builds:
     goarm:
       - "6"
       - "7"
+    binary: rpi_exporter
     mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
     ldflags:
-      - -X=github.com/prometheus/common/version.Version={{.Version}}
-      - -X=github.com/prometheus/common/version.Branch={{.Branch}}
+      - -s -w
+      # `rpi_exporter --version` prints these through prometheus/common/version.
+      - -X=github.com/prometheus/common/version.Version={{ .Version }}
+      - -X=github.com/prometheus/common/version.Revision={{ .FullCommit }}
+      - -X=github.com/prometheus/common/version.Branch={{ .Branch }}
+      - -X=github.com/prometheus/common/version.BuildUser=goreleaser
+      - -X=github.com/prometheus/common/version.BuildDate={{ .Date }}
+
+# The archive names stay as they were (rpi_exporter_<version>_linux_armv7.tar.gz),
+# so download scripts keep working. The systemd unit ships next to the binary.
+archives:
+  - id: rpi_exporter
+    ids:
+      - rpi_exporter
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+      - systemd/rpi_exporter.service
 
 checksum:
   name_template: "checksums.txt"
+
+# release-please writes the changelog and creates the GitHub release; GoReleaser
+# only attaches the artifacts to it.
+changelog:
+  disable: true
+
+# A keyless cosign signature over checksums.txt, as a Sigstore bundle, covers
+# every archive through its checksum. `artifacts: binary` would sign nothing:
+# it only matches binaries released on their own, and ours ship in archives.
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - --yes
+    artifacts: checksum
+
+release:
+  github:
+    owner: SpechtLabs
+    name: rpi_exporter
+  mode: keep-existing

@@ -1,0 +1,126 @@
+# .mise.toml — local tooling, exact pins (repo convention)
+#
+# The tasks below define how rpi_exporter is built and checked. CI uses these
+# tasks. Renovate keeps every pin in this file current.
+
+# mise reads the go directive of go.mod as the Go version to use, so it would
+# run that minimum version rather than the one pinned below. Every tool comes
+# from this file only.
+[settings]
+idiomatic_version_file_enable_tools = []
+
+[tools]
+# Keep in lockstep with the toolchain directive in go.mod and the golang image
+# in the Dockerfile; Renovate bumps them together. The go directive (minimum
+# language version) is bumped by hand.
+go = "1.27.1"
+
+# Pre-commit for Git hooks
+pre-commit = "4.6.2"
+
+# Linters. golangci-lint must match the version in .custom-gcl.yml; Renovate
+# groups the two into one PR.
+golangci-lint = "2.14.0"
+yamllint = "1.38.0"
+actionlint = "1.7.12"
+# actionlint runs shellcheck on every `run:` script when it's on PATH, and
+# silently skips them when it isn't.
+shellcheck = "0.11.0"
+
+# Release tooling
+goreleaser = "2.18.2"
+# Signs the release's checksums.txt (see .goreleaser.yaml).
+cosign = "3.1.3"
+
+# Pins GitHub Actions to commit SHAs (see the update-gha task)
+pinact = "5.0.0"
+
+# Runs .github/commit-lint, the squash commit message check in
+# pr-hygiene.yaml.
+bun = "1.4.2"
+
+[tasks.build]
+description = "Build the rpi_exporter binary into bin/"
+run = "go build -o bin/rpi_exporter ."
+
+[tasks.test]
+description = "Run the test suite with race detector and coverage"
+run = "go test -race -covermode=atomic -coverpkg=./... -coverprofile=coverage.txt ./..."
+
+# `mise run fmt` rewrites everything that has a canonical form; `mise run
+# lint` checks the same things without touching a file. go mod tidy runs
+# first, because it may rewrite go.mod.
+[tasks.fmt]
+description = "Format everything: go.mod and Go sources"
+run = [
+  { task = "go-tidy" },
+  { task = "go-fmt" },
+]
+
+[tasks.go-tidy]
+description = "Tidy go.mod and go.sum"
+run = "go mod tidy"
+
+# The same gofmt and goimports settings `mise run lint` checks, read from
+# .golangci.yaml.
+[tasks.go-fmt]
+description = "Format Go sources with the formatters configured for golangci-lint"
+run = "golangci-lint fmt"
+
+# golint-sl runs as a golangci-lint module plugin, so it has to be compiled into
+# a custom binary (./custom-gcl). Rebuilds only when .custom-gcl.yml changes.
+[tasks.lint-build]
+description = "Build the custom-gcl binary with the golint-sl plugin baked in"
+# The build downloads golangci-lint's whole dependency tree, and the module
+# proxy sometimes resets the HTTP/2 stream partway through. Modules already
+# downloaded stay in the cache, so a retry picks up where it failed.
+run = """
+for attempt in 1 2 3; do
+  golangci-lint custom && exit 0
+  echo "golangci-lint custom failed (attempt $attempt of 3)" >&2
+  sleep 10
+done
+exit 1
+"""
+sources = [".custom-gcl.yml"]
+outputs = ["custom-gcl"]
+
+# GoReleaser builds the tagged tree as it is, so an untidy go.mod has to fail
+# CI rather than be fixed up at release time.
+[tasks.mod-tidy]
+description = "Check that go.mod and go.sum are tidy"
+run = "go mod tidy -diff"
+
+[tasks.lint]
+description = "Lint the Go module with golangci-lint and golint-sl, YAML and workflows"
+depends = ["lint-build", "yaml-lint", "actionlint"]
+run = "./custom-gcl run ./..."
+
+[tasks.yaml-lint]
+description = "Lint every YAML file in the repository"
+run = "yamllint --strict ."
+
+[tasks.actionlint]
+description = "Lint the GitHub Actions workflows"
+run = "actionlint"
+
+[tasks.release-check]
+description = "Validate the GoReleaser config"
+run = "goreleaser check"
+
+[tasks.snapshot]
+description = "Build a local GoReleaser snapshot into dist/"
+run = "goreleaser build --snapshot --clean"
+
+[tasks.check]
+description = "The definition of done: every gate CI runs on the Go code"
+depends = [
+  "lint",
+  "mod-tidy",
+  "test",
+  "release-check",
+]
+
+[tasks.update-gha]
+description = "Pin GitHub Actions to commit SHAs (Renovate keeps them current afterwards)"
+run = "pinact run"

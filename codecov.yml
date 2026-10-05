@@ -1,0 +1,15 @@
+# Codecov fails a pull request when the lines it changes are less than 85%
+# covered, or when it lowers the project's coverage. The project target follows
+# the base branch (auto) rather than a fixed 85%, because the collectors read
+# the Raspberry Pi's sysfs and vcgencmd, which CI doesn't have, and the project
+# sits well below it; raise it to 85% once the collectors read through
+# something tests can stand in for.
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: 85%

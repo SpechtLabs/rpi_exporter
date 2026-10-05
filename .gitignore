@@ -10,5 +10,23 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# `go build` output
+/rpi_exporter
+
+# goreleaser build output
 dist/
-rpi_exporter
+# `mise run build` output
+bin/
+
+# editor and IDE paraphernalia
+.idea
+
+### Tooling ###
+# golangci-lint with golint-sl baked in; `mise run lint-build` writes it.
+custom-gcl
+# `mise run test` writes it.
+coverage.txt
+
+### Commit message check ###
+.github/commit-lint/node_modules/

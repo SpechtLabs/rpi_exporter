@@ -16,7 +16,7 @@ package collector
 import (
 	"bufio"
 	"bytes"
-	"log"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -27,13 +27,12 @@ import (
 
 const fanSubsystem = "fan"
 
+// piModel matches the line of /proc/cpuinfo that names the Raspberry Pi model.
+var piModel = regexp.MustCompile(`^Model\s*:\sRaspberry Pi (\d).*$`)
+
 type fanCollector struct {
 	fanRPM     *prometheus.Desc
 	fanPWMMode *prometheus.Desc
-}
-
-func init() {
-	registerCollector("fan", defaultEnabled, NewFanCollector)
 }
 
 // NewFanCollector returns a new Collector exposing CPU temperature metrics.
@@ -55,15 +54,15 @@ func NewFanCollector() (Collector, error) {
 
 // Update implements the Collector interface.
 func (c *fanCollector) Update(ch chan<- prometheus.Metric) error {
-	version := c.getPiVersion()
-
-	if version == "5" {
-		c.updateRPM(ch)
-	} else {
-		c.updatePWMMode(ch)
+	version, err := c.getPiVersion()
+	if err != nil {
+		return err
 	}
 
-	return nil
+	if version == "5" {
+		return c.updateRPM(ch)
+	}
+	return c.updatePWMMode(ch)
 }
 
 func (c *fanCollector) updateRPM(ch chan<- prometheus.Metric) error {
@@ -128,30 +127,34 @@ func (c *fanCollector) updatePWMMode(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
-func (e *fanCollector) getPiVersion() string {
+// getPiVersion reads the Raspberry Pi model number (4, 5, ...) from
+// /proc/cpuinfo, or "unknown" when the file names no Raspberry Pi model.
+func (c *fanCollector) getPiVersion() (string, error) {
 	fi, err := os.Open("/proc/cpuinfo")
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
+	defer func() { _ = fi.Close() }()
 
-	defer fi.Close()
+	return parsePiVersion(fi)
+}
 
-	// Compile the regex pattern
-	r := regexp.MustCompile(`^Model\s*:\sRaspberry Pi (\d).*$`)
-
+// parsePiVersion reads the Raspberry Pi model number from the contents of
+// /proc/cpuinfo.
+func parsePiVersion(cpuinfo io.Reader) (string, error) {
 	// make a read buffer
-	scanner := bufio.NewScanner(fi)
+	scanner := bufio.NewScanner(cpuinfo)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if matches := r.FindStringSubmatch(line); matches != nil {
+		if matches := piModel.FindStringSubmatch(line); matches != nil {
 			// matches[1] contains the first captured group
-			return matches[1]
+			return matches[1], nil
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 
-	return "unknown"
+	return "unknown", nil
 }

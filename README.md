@@ -6,8 +6,8 @@
 [![release_badge]][release page]
 [![license_badge]][license]
 
-![go_releaser_ci_build_badge]
-![docker_build_badge]
+[![ci_badge]][ci]
+[![release_workflow_badge]][release workflow]
 
 ---
 
@@ -33,15 +33,25 @@ the [release page].
 Do not forget to run _rpi_exporter_ using user in `video` group to get GPU
 details from RPi.
 
-##### Building from source
-
-This project uses [go mod] for vendoring.
+The container image `ghcr.io/spechtlabs/rpi_exporter` is published for every
+release (`latest` and the release tag) and for every commit to `main` (`main`):
 
 ```bash
-git clone https://github.com/lukasmalkmus/rpi_exporter.git
-cd rpi_exporter
-make build
+docker run -d -p 9243:9243 ghcr.io/spechtlabs/rpi_exporter:latest
 ```
+
+##### Building from source
+
+The toolchain is pinned with [mise]:
+
+```bash
+git clone https://github.com/SpechtLabs/rpi_exporter.git
+cd rpi_exporter
+mise install
+mise run build
+```
+
+`mise run check` runs the linters and tests CI runs.
 
 #### Using the application
 
@@ -68,16 +78,18 @@ Distributed under Apache License (`Apache License, Version 2.0`).
 See [LICENSE](LICENSE) for more information.
 
 <!-- Links -->
-[go mod]: https://golang.org/cmd/go/#hdr-Module_maintenance
+[mise]: https://mise.jdx.dev
 [Lukas Malkmus]: https://github.com/lukasmalkmus
 [cedi]: https://github.com/cedi
 
 <!-- Badges -->
-[go report_badge]: https://goreportcard.com/badge/github.com/cedi/rpi_exporter
-[report]: https://goreportcard.com/report/github.com/cedi/rpi_exporter
-[release page]: https://github.com/cedi/rpi_exporter/releases
+[go report_badge]: https://goreportcard.com/badge/github.com/spechtlabs/rpi_exporter
+[report]: https://goreportcard.com/report/github.com/spechtlabs/rpi_exporter
+[release page]: https://github.com/SpechtLabs/rpi_exporter/releases
 [release_badge]: https://img.shields.io/github/release/cedi/rpi_exporter.svg
 [license]: https://opensource.org/licenses/Apache-2.0
 [license_badge]: https://img.shields.io/badge/license-Apache-blue.svg
-[go_releaser_ci_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/go_releaser_ci.yaml/badge.svg?branch=main
-[docker_build_badge]: https://github.com/cedi/rpi_exporter/actions/workflows/docker_build.yaml/badge.svg?branch=main
+[ci_badge]: https://github.com/SpechtLabs/rpi_exporter/actions/workflows/ci.yaml/badge.svg
+[ci]: https://github.com/SpechtLabs/rpi_exporter/actions/workflows/ci.yaml
+[release_workflow_badge]: https://github.com/SpechtLabs/rpi_exporter/actions/workflows/release.yaml/badge.svg?branch=main
+[release workflow]: https://github.com/SpechtLabs/rpi_exporter/actions/workflows/release.yaml
