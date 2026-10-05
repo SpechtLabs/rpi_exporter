@@ -2,7 +2,9 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-    ":semanticCommits"
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests",
+    "customManagers:githubActionsVersions"
   ],
   "timezone": "Europe/Berlin",
   "dependencyDashboard": true,
@@ -16,6 +18,20 @@
   "labels": [
     "dependencies"
   ],
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": [
+      "dependencies",
+      "security"
+    ]
+  },
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodUpdateImportPaths"
+  ],
+  "pre-commit": {
+    "enabled": true
+  },
   "lockFileMaintenance": {
     "enabled": true,
     "schedule": [
@@ -37,9 +53,44 @@
       "packageNameTemplate": "go",
       "datasourceTemplate": "golang-version",
       "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the golangci-lint version the custom-gcl binary is built from.",
+      "managerFilePatterns": [
+        "/(^|/)\\.custom-gcl\\.yml$/"
+      ],
+      "matchStrings": [
+        "(?:^|\\n)version:\\s*\"?(?<currentValue>v\\d+\\.\\d+\\.\\d+)\"?"
+      ],
+      "depNameTemplate": "golangci-lint",
+      "packageNameTemplate": "golangci/golangci-lint",
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Track the golint-sl plugin version baked into custom-gcl.",
+      "managerFilePatterns": [
+        "/(^|/)\\.custom-gcl\\.yml$/"
+      ],
+      "matchStrings": [
+        "module:\\s*\"(?<depName>github\\.com/spechtlabs/golint-sl)\"\\s*\\n\\s*version:\\s*\"(?<currentValue>v[^\"]+)\""
+      ],
+      "datasourceTemplate": "go",
+      "versioningTemplate": "semver"
     }
   ],
   "packageRules": [
+    {
+      "description": "mise is pinned as MISE_VERSION in every workflow that sets it up; move them at once, and only to a release a day old, the age mise-action waited for before the pin.",
+      "matchDepNames": [
+        "jdx/mise"
+      ],
+      "groupName": "mise",
+      "groupSlug": "mise",
+      "minimumReleaseAge": "1 day"
+    },
     {
       "description": "Automerge digest, pin, patch, and minor updates once CI passes.",
       "matchUpdateTypes": [
@@ -74,22 +125,23 @@
       "dependencyDashboardApproval": false
     },
     {
-      "description": "Do not manage npm as a separate mise tool; Node provides npm.",
-      "matchFileNames": [
-        ".mise.toml"
-      ],
-      "matchDepNames": [
-        "npm"
-      ],
-      "enabled": false
-    },
-    {
       "description": "Group Go module updates together.",
       "matchManagers": [
         "gomod"
       ],
       "groupName": "Go modules",
       "groupSlug": "go-modules"
+    },
+    {
+      "description": "The golang build image in the Dockerfile follows the Go toolchain in .mise.toml and go.mod.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchDepNames": [
+        "golang"
+      ],
+      "groupName": "Go toolchain",
+      "groupSlug": "go-toolchain"
     },
     {
       "description": "Update .mise.toml and go.mod Go versions together.",
@@ -108,14 +160,41 @@
       "dependencyDashboardApproval": false
     },
     {
-      "description": "Group docs site dependencies together.",
-      "matchFileNames": [
-        "docs/package.json",
-        "docs/bun.lock"
+      "description": "Leave the go directive in go.mod alone. It is the minimum language version, not the toolchain; bumping it to a full patch version (1.27 -> 1.27.1) makes it equal to the toolchain directive and go mod tidy then deletes the toolchain line. Renovate tracks the exact version through the toolchain directive instead.",
+      "matchManagers": [
+        "gomod"
       ],
-      "groupName": "docs dependencies",
-      "groupSlug": "docs-dependencies"
+      "matchDepTypes": [
+        "golang"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "golangci-lint is pinned in .mise.toml and .custom-gcl.yml; the two must never disagree.",
+      "matchDepNames": [
+        "golangci-lint"
+      ],
+      "groupName": "golangci-lint",
+      "groupSlug": "golangci-lint"
+    },
+    {
+      "description": "golint-sl is pinned in .custom-gcl.yml and .pre-commit-config.yaml; move both at once.",
+      "matchPackageNames": [
+        "/golint-sl$/i"
+      ],
+      "groupName": "golint-sl",
+      "groupSlug": "golint-sl"
+    },
+    {
+      "description": "The commit message check must parse with the release-please version the release-please action bundles (see its package-lock.json), not the newest one. Bump it by hand alongside the action.",
+      "matchFileNames": [
+        ".github/commit-lint/package.json"
+      ],
+      "matchPackageNames": [
+        "release-please"
+      ],
+      "enabled": false
     }
   ],
-  "includeForks": true
+  "forkProcessing": "enabled"
 }

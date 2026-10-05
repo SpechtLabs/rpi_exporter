@@ -17,20 +17,24 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
-	kingpin "github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
 )
 
+// textFileDirectory is the --collector.textfile.directory flag RegisterFlags
+// defines.
+var textFileDirectory *string
+
 var (
-	textFileDirectory = kingpin.Flag("collector.textfile.directory", "Directory to read text files with metrics from.").Default("").String()
-	mtimeDesc         = prometheus.NewDesc(
+	mtimeDesc = prometheus.NewDesc(
 		"node_textfile_mtime_seconds",
 		"Unixtime mtime of textfiles successfully read.",
 		[]string{"file"},
@@ -40,10 +44,6 @@ var (
 
 type textFileCollector struct {
 	path string
-}
-
-func init() {
-	registerCollector("textfile", defaultEnabled, NewTextFileCollector)
 }
 
 // NewTextFileCollector returns a new Collector exposing metrics read from files
@@ -81,14 +81,7 @@ func convertMetricFamily(metricFamily *dto.MetricFamily, ch chan<- prometheus.Me
 		}
 
 		for k := range allLabelNames {
-			present := false
-			for _, name := range names {
-				if k == name {
-					present = true
-					break
-				}
-			}
-			if !present {
+			if !slices.Contains(names, k) {
 				names = append(names, k)
 				values = append(values, "")
 			}
@@ -195,9 +188,11 @@ fileLoop:
 			error = 1.0
 			continue
 		}
-		var parser expfmt.TextParser
+		// The zero TextParser has no name validation scheme and panics on the
+		// first metric name since prometheus/common v0.66.
+		parser := expfmt.NewTextParser(model.UTF8Validation)
 		parsedFamilies, err := parser.TextToMetricFamilies(file)
-		file.Close()
+		_ = file.Close()
 		if err != nil {
 			log.Errorf("Error parsing %q: %v", path, err)
 			error = 1.0

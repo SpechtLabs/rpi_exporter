@@ -1,6 +1,6 @@
 [Unit]
 Description=Prometheus exporter for RPi temperature metrics
-Documentation=https://github.com/lukasmalkmus/rpi_exporter
+Documentation=https://github.com/SpechtLabs/rpi_exporter
 
 [Service]
 Restart=always

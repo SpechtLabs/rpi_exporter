@@ -1,5 +1,12 @@
-# Build the urlshortener binary
-FROM golang:1.27 AS builder
+# Build the rpi_exporter binary. The builder runs on the build machine's own
+# platform and cross-compiles for the target, rather than compiling under
+# QEMU emulation. Keep the golang tag in lockstep with go in .mise.toml.
+FROM --platform=$BUILDPLATFORM golang:1.27.1 AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
+# The release version, which `rpi_exporter --version` prints.
+ARG VERSION=dev
 
 WORKDIR /workspace
 
@@ -16,9 +23,12 @@ COPY rpi_exporter.go rpi_exporter.go
 COPY collector/ collector/
 
 # Build
-RUN go build -o rpi_exporter ./rpi_exporter.go
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -trimpath \
+    -ldflags "-s -w -X=github.com/prometheus/common/version.Version=${VERSION#v}" \
+    -o rpi_exporter .
 
-FROM  quay.io/prometheus/busybox:latest
+FROM quay.io/prometheus/busybox:latest
 LABEL maintainer="Lukas Malkmus <mail@lukasmalkmus.com>"
 
 COPY --from=builder /workspace/rpi_exporter /bin/rpi_exporter

@@ -15,13 +15,14 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -30,9 +31,10 @@ import (
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
+	"github.com/sierrasoftworks/humane-errors-go"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/cedi/rpi_exporter/collector"
+	"github.com/spechtlabs/rpi_exporter/collector"
 )
 
 // A wrapper around http.Handler to handle filtering.
@@ -40,9 +42,11 @@ import (
 // Create a new handler using newHandler().
 type handler struct {
 	unfilteredHandler http.Handler
-	// There are only three collectors in this program, so that's seven combinations at most.
+	// There are only four collectors in this program, so that's fifteen
+	// combinations at most. Concurrent scrapes share it, hence the mutex.
 	filteredHandlers        map[string]http.Handler
 	exporterMetricsRegistry *prometheus.Registry
+	mu                      sync.Mutex
 	includeExporterMetrics  bool
 }
 
@@ -64,7 +68,7 @@ func newHandler(includeExporterMetrics bool) *handler {
 	// Create the unfiltered default handler.
 	unfilteredHandler, err := h.filteredHandler()
 	if err != nil {
-		panic(fmt.Sprintf("Couldn't create metrics handler: %s", err))
+		panic("Couldn't create metrics handler: " + err.Display())
 	}
 
 	h.unfilteredHandler = unfilteredHandler
@@ -74,8 +78,11 @@ func newHandler(includeExporterMetrics bool) *handler {
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Get the filters from the query.
 	filters := r.URL.Query()["collect[]"]
-	// Sort filters to allow caching of filtered handlers.
+	// Sort filters, and drop repeated ones, to allow caching of filtered
+	// handlers: collect[]=cpu&collect[]=cpu is the same handler as
+	// collect[]=cpu, not a new cache entry.
 	sort.Strings(filters)
+	filters = slices.Compact(filters)
 	log.Debugln("collect query:", filters)
 
 	// Use the unfiltered handler if no filters were given.
@@ -87,20 +94,27 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Create a filtered handler.
 	filteredHandler, err := h.filteredHandler(filters...)
 	if err != nil {
-		log.Errorln("Couldn't create filtered handler:", err)
+		log.Errorln("Couldn't create filtered handler:", err.Display())
+		// The message names the collect[] values the request sent; plain text
+		// keeps a browser from rendering them.
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Couldn't create filtered metrics handler: %s", err)))
+		_, _ = io.WriteString(w, "Couldn't create filtered metrics handler: "+err.Display())
 		return
 	}
 
 	filteredHandler.ServeHTTP(w, r)
 }
 
-func (h *handler) filteredHandler(filters ...string) (http.Handler, error) {
+func (h *handler) filteredHandler(filters ...string) (http.Handler, humane.Error) {
 	// Do not recreate unfiltered handler if it already exists.
 	if len(filters) == 0 && h.unfilteredHandler != nil {
 		return h.unfilteredHandler, nil
 	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
 	// Check if there is a handler for this combination of filters already.
 	filtersStr := strings.Join(filters, ",")
@@ -112,14 +126,14 @@ func (h *handler) filteredHandler(filters ...string) (http.Handler, error) {
 	// Create a new Raspberry Pi collector.
 	rpiColl, err := collector.New(filters...)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't create %s", err)
+		return nil, err
 	}
 
 	// Create a new prometheus registry and register the Raspberry Pi collector
 	// on it.
 	reg := prometheus.NewRegistry()
 	if err := reg.Register(rpiColl); err != nil {
-		return nil, fmt.Errorf("couldn't register collector: %s", err)
+		return nil, humane.Wrap(err, "cannot register the collectors", "this is a bug in rpi_exporter; please report it at https://github.com/SpechtLabs/rpi_exporter/issues")
 	}
 
 	// Delegate http serving to Prometheus client library, which will call
@@ -150,11 +164,28 @@ func (h *handler) filteredHandler(filters ...string) (http.Handler, error) {
 	return handler, nil
 }
 
+// HealthCheckHandler answers the health check path with a static JSON
+// document: if it answers at all, the exporter is alive.
 func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	// A very simple health check.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, `{"alive": true}`)
+	_, _ = io.WriteString(w, `{"alive": true}`)
+}
+
+// indexHandler serves the landing page, which links the metrics and the
+// health check.
+func indexHandler(metricsPath, healthPath string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`<html>
+			<head><title>Raspberry Pi Exporter</title></head>
+			<body>
+			<h1>Raspberry Pi Exporter</h1>
+			<p><a href="` + metricsPath + `">Metrics</a></p>
+			<p><a href="` + healthPath + `">Exporter health</a></p>
+			</body>
+			</html>`))
+	}
 }
 
 func main() {
@@ -167,6 +198,7 @@ func main() {
 	)
 
 	// Setup the command line flags and commands.
+	collector.RegisterFlags(kingpin.CommandLine)
 	kingpin.Version(version.Print("rpi_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
@@ -179,16 +211,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle(*webMetricsPath, newHandler(!*webDisableExporterMetrics))
 	mux.HandleFunc(*webHealthPath, HealthCheckHandler)
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-			<head><title>Raspberry Pi Exporter</title></head>
-			<body>
-			<h1>Raspberry Pi Exporter</h1>
-			<p><a href="` + *webMetricsPath + `">Metrics</a></p>
-			<p><a href="` + *webHealthPath + `">Exporter health</a></p>
-			</body>
-			</html>`))
-	})
+	mux.HandleFunc("/", indexHandler(*webMetricsPath, *webHealthPath))
 
 	// Setup webserver.
 	srv := &http.Server{

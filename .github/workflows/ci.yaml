@@ -1,0 +1,37 @@
+name: CI
+
+# Everything a pull request runs. Each part is a workflow of its own, which
+# release.yaml calls too (go.yaml gates every release, docker.yaml publishes
+# the image) and which runs on its own from the Actions tab.
+on:
+  # Skip pull requests that only touch documentation. The filter excludes
+  # rather than lists, so a new package or config file runs CI by default. No
+  # check is required by the rulesets, which is what makes a workflow-level
+  # filter safe: a skipped required check would block the merge.
+  pull_request:
+    paths:
+      - "**"
+      - "!**.md"
+      - "!LICENSE"
+      - "!NOTICE"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A new push to a pull request supersedes its run in flight.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  go:
+    name: Go
+    uses: ./.github/workflows/go.yaml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # Builds the image for every platform, without pushing it.
+  docker:
+    name: Docker
+    uses: ./.github/workflows/docker.yaml

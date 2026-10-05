@@ -1,0 +1,162 @@
+name: Release
+
+# Every push to main publishes the `main` image. release-please opens and
+# updates the release pull request; once it's merged, GoReleaser attaches the
+# Raspberry Pi binaries to the release and the image is published under the
+# release's tag and `latest`.
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish or repair (e.g. v1.0.11)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  id-token: write
+  packages: write
+  pull-requests: write
+
+env:
+  # mise itself, pinned; go.yaml explains why.
+  # renovate: datasource=github-releases depName=jdx/mise extractVersion=^v(?<version>.+)$
+  MISE_VERSION: 2026.10.2
+
+# Never cancel a release half-way: that can leave a tag published with no
+# artifacts. Pushes key on the SHA so each commit gets its own run; repairs key
+# on the tag so two repairs of the same tag cannot race. Only the gate job
+# below cancels anything.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  # The gate: what the release builds and publishes, the same as a pull
+  # request runs.
+  #
+  # A push to main that lands while an older push is still in its gate
+  # cancels that gate: the older run then skips release-please, which would
+  # only find that main has moved on. Repairs never cancel.
+  go:
+    name: Go
+    uses: ./.github/workflows/go.yaml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    concurrency:
+      group: ${{ github.workflow }}-gate-go-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'push' }}
+
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    needs:
+      - go
+    if: github.event_name == 'push'
+    steps:
+      # Renovate automerges in quick succession. A run whose commit is no longer
+      # main's tip leaves release-please to the newer run, so a stale run cannot
+      # rewrite the release PR behind a newer one.
+      - name: Refuse to act unless this run's head is still main's tip
+        id: still-current
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tip="$(gh api "repos/${{ github.repository }}/commits/main" --jq .sha)"
+          if [ "$tip" = "${{ github.sha }}" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::main has moved to $tip since this run started at ${{ github.sha }}; leaving release-please to that run."
+          fi
+
+      # GitHub doesn't start workflows for what GITHUB_TOKEN does: a release
+      # pull request it opens or updates gets a CI run that waits for
+      # approval. RELEASE_PLEASE_TOKEN, a fine-grained personal access token
+      # with read and write access to this repository's contents, pull
+      # requests and issues, makes the pull request an ordinary one whose CI
+      # runs. Without the secret, release-please falls back to GITHUB_TOKEN.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release-please
+        if: steps.still-current.outputs.current == 'true'
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+    outputs:
+      current: ${{ steps.still-current.outputs.current }}
+      release_created: ${{ steps.release-please.outputs.release_created }}
+      tag_name: ${{ steps.release-please.outputs.tag_name }}
+
+  goreleaser:
+    name: GoReleaser Build & Publish
+    runs-on: ubuntu-latest
+    needs:
+      - go
+      - release-please
+    if: >-
+      always() &&
+      needs.go.result == 'success' &&
+      (
+        (github.event_name == 'push' && needs.release-please.outputs.release_created == 'true') ||
+        github.event_name == 'workflow_dispatch'
+      )
+    steps:
+      # A repair publishes an old tag with the current GoReleaser config, so a
+      # config fix on main can rescue a release that failed to publish.
+      - name: Checkout retry configuration
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Preserve retry configuration
+        if: github.event_name == 'workflow_dispatch'
+        run: cp .goreleaser.yaml "${RUNNER_TEMP}/goreleaser.yaml"
+
+      - name: Checkout release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
+
+      - name: Set up mise
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: ${{ env.MISE_VERSION }}
+          install_args: go goreleaser cosign
+
+      - name: Run GoReleaser
+        run: goreleaser release --clean --config "${CONFIG}"
+        env:
+          CONFIG: ${{ github.event_name == 'workflow_dispatch' && format('{0}/goreleaser.yaml', runner.temp) || '.goreleaser.yaml' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The image: `main` for every push to main that is still main's tip, and
+  # the release's tag plus `latest` when release-please cut a release (or
+  # only the tag, when a repair publishes an old one).
+  docker:
+    name: Docker
+    needs:
+      - go
+      - release-please
+    if: >-
+      always() &&
+      needs.go.result == 'success' &&
+      (
+        (github.event_name == 'push' && needs.release-please.outputs.current == 'true') ||
+        github.event_name == 'workflow_dispatch'
+      )
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker.yaml
+    with:
+      push: true
+      ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || '' }}
+      version: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
+      latest: ${{ github.event_name == 'push' && needs.release-please.outputs.release_created == 'true' }}
