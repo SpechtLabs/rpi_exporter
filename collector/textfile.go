@@ -25,6 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -187,7 +188,9 @@ fileLoop:
 			error = 1.0
 			continue
 		}
-		var parser expfmt.TextParser
+		// The zero TextParser has no name validation scheme and panics on the
+		// first metric name since prometheus/common v0.66.
+		parser := expfmt.NewTextParser(model.UTF8Validation)
 		parsedFamilies, err := parser.TextToMetricFamilies(file)
 		_ = file.Close()
 		if err != nil {

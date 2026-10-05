@@ -33,11 +33,17 @@ var piModel = regexp.MustCompile(`^Model\s*:\sRaspberry Pi (\d).*$`)
 type fanCollector struct {
 	fanRPM     *prometheus.Desc
 	fanPWMMode *prometheus.Desc
+	// sysfs and procfs are where sysfs and procfs are mounted, /sys and
+	// /proc outside tests.
+	sysfs  string
+	procfs string
 }
 
 // NewFanCollector returns a new Collector exposing CPU temperature metrics.
 func NewFanCollector() (Collector, error) {
 	fc := &fanCollector{
+		sysfs:  "/sys",
+		procfs: "/proc",
 		fanRPM: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, fanSubsystem, "rpm"),
 			"Fan speed in RPM for Pi5",
@@ -67,7 +73,7 @@ func (c *fanCollector) Update(ch chan<- prometheus.Metric) error {
 
 func (c *fanCollector) updateRPM(ch chan<- prometheus.Metric) error {
 	// Get all the hwmons from /sys/devices/platform/cooling_fan/hwmon/
-	hwmons, err := filepath.Glob("/sys/devices/platform/cooling_fan/hwmon/hwmon[0-9]*")
+	hwmons, err := filepath.Glob(filepath.Join(c.sysfs, "devices/platform/cooling_fan/hwmon/hwmon[0-9]*"))
 	if err != nil {
 		return err
 	}
@@ -98,7 +104,7 @@ func (c *fanCollector) updateRPM(ch chan<- prometheus.Metric) error {
 
 func (c *fanCollector) updatePWMMode(ch chan<- prometheus.Metric) error {
 	// Get all the hwmons from /sys/devices/platform/pwm-fan/hwmon/hwmon*
-	hwmons, err := filepath.Glob("/sys/devices/platform/pwm-fan/hwmon/hwmon[0-9]*")
+	hwmons, err := filepath.Glob(filepath.Join(c.sysfs, "devices/platform/pwm-fan/hwmon/hwmon[0-9]*"))
 	if err != nil {
 		return err
 	}
@@ -130,7 +136,7 @@ func (c *fanCollector) updatePWMMode(ch chan<- prometheus.Metric) error {
 // getPiVersion reads the Raspberry Pi model number (4, 5, ...) from
 // /proc/cpuinfo, or "unknown" when the file names no Raspberry Pi model.
 func (c *fanCollector) getPiVersion() (string, error) {
-	fi, err := os.Open("/proc/cpuinfo")
+	fi, err := os.Open(filepath.Join(c.procfs, "cpuinfo"))
 	if err != nil {
 		return "", err
 	}

@@ -27,11 +27,14 @@ const cpuSubsystem = "cpu"
 type cpuCollector struct {
 	cpuTempCelsius *prometheus.Desc
 	cpuFreqHertz   *prometheus.Desc
+	// sysfs is where sysfs is mounted, /sys outside tests.
+	sysfs string
 }
 
 // NewCPUCollector returns a new Collector exposing CPU temperature metrics.
 func NewCPUCollector() (Collector, error) {
 	cc := &cpuCollector{
+		sysfs: "/sys",
 		cpuTempCelsius: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, cpuSubsystem, "temperature_celsius"),
 			"CPU temperature in degrees celsius (°C).",
@@ -50,7 +53,7 @@ func NewCPUCollector() (Collector, error) {
 func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
 	// Get temperature string from /sys/class/thermal/thermal_zone0/temp and
 	// convert it to float64 value.
-	b, err := os.ReadFile("/sys/class/thermal/thermal_zone0/temp")
+	b, err := os.ReadFile(filepath.Join(c.sysfs, "class/thermal/thermal_zone0/temp"))
 	if err != nil {
 		return err
 	}
@@ -67,7 +70,7 @@ func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
 	)
 
 	// Get all the cpus from /sys/devices/system/cpu/cpu*.
-	cpus, err := filepath.Glob("/sys/devices/system/cpu/cpu[0-9]*")
+	cpus, err := filepath.Glob(filepath.Join(c.sysfs, "devices/system/cpu/cpu[0-9]*"))
 	if err != nil {
 		return err
 	}

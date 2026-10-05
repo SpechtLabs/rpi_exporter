@@ -98,3 +98,12 @@ func TestHealthCheckHandler(t *testing.T) {
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"alive": true}`, string(body))
 }
+
+func TestIndexHandler(t *testing.T) {
+	w := httptest.NewRecorder()
+	indexHandler("/metrics", "/health")(w, httptest.NewRequest(http.MethodGet, "/", http.NoBody))
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `<a href="/metrics">Metrics</a>`)
+	assert.Contains(t, w.Body.String(), `<a href="/health">Exporter health</a>`)
+}

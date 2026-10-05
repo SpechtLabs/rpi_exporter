@@ -173,6 +173,21 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.WriteString(w, `{"alive": true}`)
 }
 
+// indexHandler serves the landing page, which links the metrics and the
+// health check.
+func indexHandler(metricsPath, healthPath string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`<html>
+			<head><title>Raspberry Pi Exporter</title></head>
+			<body>
+			<h1>Raspberry Pi Exporter</h1>
+			<p><a href="` + metricsPath + `">Metrics</a></p>
+			<p><a href="` + healthPath + `">Exporter health</a></p>
+			</body>
+			</html>`))
+	}
+}
+
 func main() {
 	// Command line flags.
 	var (
@@ -196,16 +211,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle(*webMetricsPath, newHandler(!*webDisableExporterMetrics))
 	mux.HandleFunc(*webHealthPath, HealthCheckHandler)
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`<html>
-			<head><title>Raspberry Pi Exporter</title></head>
-			<body>
-			<h1>Raspberry Pi Exporter</h1>
-			<p><a href="` + *webMetricsPath + `">Metrics</a></p>
-			<p><a href="` + *webHealthPath + `">Exporter health</a></p>
-			</body>
-			</html>`))
-	})
+	mux.HandleFunc("/", indexHandler(*webMetricsPath, *webHealthPath))
 
 	// Setup webserver.
 	srv := &http.Server{
