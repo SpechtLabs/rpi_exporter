@@ -1,7 +1,7 @@
 # Build the rpi_exporter binary. The builder runs on the build machine's own
 # platform and cross-compiles for the target, rather than compiling under
 # QEMU emulation. Keep the golang tag in lockstep with go in .mise.toml.
-FROM --platform=$BUILDPLATFORM golang:1.27.1 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.2 AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
