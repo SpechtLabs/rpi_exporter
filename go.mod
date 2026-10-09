@@ -2,7 +2,7 @@ module github.com/spechtlabs/rpi_exporter
 
 go 1.27
 
-toolchain go1.27.1
+toolchain go1.27.2
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
