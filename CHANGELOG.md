@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.12](https://github.com/SpechtLabs/rpi_exporter/compare/v1.0.11...v1.0.12) (2026-10-12)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/prometheus/client_golang to v1.25.0 ([#52](https://github.com/SpechtLabs/rpi_exporter/issues/52)) ([0211ee4](https://github.com/SpechtLabs/rpi_exporter/commit/0211ee4755cdadb428866237a12bd7f7e1c360f3))
+* **deps:** update module github.com/prometheus/common to v0.72.1 ([#62](https://github.com/SpechtLabs/rpi_exporter/issues/62)) ([a60b586](https://github.com/SpechtLabs/rpi_exporter/commit/a60b586c5f0ed8c16229155c552c4fdb8f2926d0))
+
 ## [1.0.11](https://github.com/SpechtLabs/rpi_exporter/compare/v1.0.10...v1.0.11) (2026-10-05)
 
 
