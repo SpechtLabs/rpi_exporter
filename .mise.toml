@@ -37,7 +37,7 @@ pinact = "5.0.2"
 
 # Runs .github/commit-lint, the squash commit message check in
 # pr-hygiene.yaml.
-bun = "1.4.4"
+bun = "1.4.5"
 
 [tasks.build]
 description = "Build the rpi_exporter binary into bin/"
